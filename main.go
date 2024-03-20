@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
+	"github.com/mattn/go-runewidth"
 	"github.com/nsf/termbox-go"
 )
 
@@ -15,6 +18,7 @@ var current_col, current_row int
 var source_file string
 var text_buffer = [][]rune{}
 var copy_buffer = [][]rune{}
+var undo_buffer = [][]rune{}
 var modified bool
 
 func main() {
@@ -37,7 +41,30 @@ func run_editor_loop() {
 }
 
 func display_status_bar() {
-	panic("unimplemented")
+	statusBar := new(StatusBar)
+	if mode > 0 {
+		statusBar.mode_status = "EDIT: "
+	} else {
+		statusBar.mode_status = "VIEW: "
+	}
+	statusBar.file_status = source_file[:min(8, len(source_file))] + " - " + strconv.Itoa(len(text_buffer)) + " lines"
+	if modified {
+		statusBar.file_status += " modified"
+	} else {
+		statusBar.file_status += " saved"
+	}
+	statusBar.cursor_status = " Row " + strconv.Itoa(current_row+1) + ", Col " + strconv.Itoa(current_col+1) + " "
+	if len(copy_buffer) > 0 {
+		statusBar.copy_status = " [copy] "
+	}
+	if len(copy_buffer) > 0 {
+		statusBar.undo_status = " [undo] "
+	}
+	used_space := len(statusBar.mode_status) + len(statusBar.file_status) + len(statusBar.cursor_status) + len(statusBar.copy_status) + len(statusBar.undo_status)
+	spaces := strings.Repeat(" ", used_space)
+	message := statusBar.GetStatusString(spaces)
+	print_message(0, ROWS, termbox.ColorBlack, termbox.ColorWhite, message)
+	termbox.Flush()
 }
 
 func process_events() {
@@ -56,7 +83,23 @@ func clear_and_display_buffer() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	display_text_buffer()
+	var col, row int
+	for row = 0; row < ROWS; row++ {
+		text_bufferRow := row + offset_row
+		for col = 0; col < COLS; col++ {
+			text_bufferCol := col + offset_col
+			if text_bufferRow >= 0 && text_bufferRow < len(text_buffer) && text_bufferCol < len(text_buffer[text_bufferRow]) {
+				if text_buffer[text_bufferRow][text_bufferCol] != '\t' {
+					termbox.SetChar(col, row, text_buffer[text_bufferRow][text_bufferCol])
+				} else {
+					termbox.SetCell(col, row, rune(' '), termbox.ColorBlack, termbox.ColorDefault)
+				}
+			} else if row+offset_row > len(text_buffer)-1 {
+				termbox.SetCell(0, row, rune('*'), termbox.ColorBlue, termbox.ColorRed)
+			}
+		}
+		termbox.SetChar(col, row, rune('\n'))
+	}
 	termbox.Flush()
 
 }
@@ -87,12 +130,12 @@ func init_editor() {
 	}
 }
 
-// // func print_message(col, row int, fg, bg termbox.Attribute, msg string) {
-// // 	for _, ch := range msg {
-// // 		termbox.SetCell(col, row, ch, fg, bg)
-// // 		col += runewidth.RuneWidth(ch)
-// // 	}
-// // }
+func print_message(col, row int, fg, bg termbox.Attribute, msg string) {
+	for _, ch := range msg {
+		termbox.SetCell(col, row, ch, fg, bg)
+		col += runewidth.RuneWidth(ch)
+	}
+}
 
 func display_text_buffer() {
 	var col, row int
@@ -162,4 +205,16 @@ func write_file(filename string) {
 		}
 	}
 	writer.Flush()
+}
+
+type StatusBar struct {
+	mode_status   string
+	file_status   string
+	copy_status   string
+	undo_status   string
+	cursor_status string
+}
+
+func (m StatusBar) GetStatusString(spaces string) string {
+	return m.mode_status + m.file_status + m.copy_status + m.undo_status + spaces + m.cursor_status
 }
