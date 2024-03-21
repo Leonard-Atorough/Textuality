@@ -83,17 +83,16 @@ func clear_and_display_buffer() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	tokenedBuffer := tokenize(text_buffer)
 	var col, row int
 	for row = 0; row < ROWS; row++ {
 		text_bufferRow := row + offset_row
 		for col = 0; col < COLS; col++ {
 			text_bufferCol := col + offset_col
-			if text_bufferRow >= 0 && text_bufferRow < len(text_buffer) && text_bufferCol < len(text_buffer[text_bufferRow]) {
-				if text_buffer[text_bufferRow][text_bufferCol] != '\t' {
-					termbox.SetChar(col, row, text_buffer[text_bufferRow][text_bufferCol])
-				} else {
-					termbox.SetCell(col, row, rune(' '), termbox.ColorBlack, termbox.ColorDefault)
-				}
+			if text_bufferRow >= 0 && text_bufferRow < len(tokenedBuffer) && text_bufferCol < len(text_buffer[text_bufferRow]) {
+				character := tokenedBuffer[text_bufferRow][text_bufferCol]
+				characterStyle := highlight(string(character.Type))
+				termbox.SetCell(col, row, character.Value, characterStyle.foreground, characterStyle.background)
 			} else if row+offset_row > len(text_buffer)-1 {
 				termbox.SetCell(0, row, rune('*'), termbox.ColorBlue, termbox.ColorRed)
 			}
@@ -134,26 +133,6 @@ func print_message(col, row int, fg, bg termbox.Attribute, msg string) {
 	for _, ch := range msg {
 		termbox.SetCell(col, row, ch, fg, bg)
 		col += runewidth.RuneWidth(ch)
-	}
-}
-
-func display_text_buffer() {
-	var col, row int
-	for row = 0; row < ROWS; row++ {
-		text_bufferRow := row + offset_row
-		for col = 0; col < COLS; col++ {
-			text_bufferCol := col + offset_col
-			if text_bufferRow >= 0 && text_bufferRow < len(text_buffer) && text_bufferCol < len(text_buffer[text_bufferRow]) {
-				if text_buffer[text_bufferRow][text_bufferCol] != '\t' {
-					termbox.SetChar(col, row, text_buffer[text_bufferRow][text_bufferCol])
-				} else {
-					termbox.SetCell(col, row, rune(' '), termbox.ColorDefault, termbox.ColorGreen)
-				}
-			} else if row+offset_row > len(text_buffer)-1 {
-				termbox.SetCell(0, row, rune('*'), termbox.ColorBlue, termbox.ColorRed)
-			}
-		}
-		termbox.SetChar(col, row, rune('\n'))
 	}
 }
 
@@ -213,6 +192,30 @@ type StatusBar struct {
 	copy_status   string
 	undo_status   string
 	cursor_status string
+}
+
+type CharacterStyle struct {
+	foreground termbox.Attribute
+	background termbox.Attribute
+}
+
+func highlight(token string) CharacterStyle {
+	switch token {
+	case "TokenTypeDigit":
+		return CharacterStyle{termbox.ColorBlue, termbox.ColorDefault}
+	case "TokenTypeCharacter":
+		return CharacterStyle{termbox.ColorRed, termbox.ColorDefault}
+	case "TokenTypeSymbol":
+		return CharacterStyle{termbox.ColorWhite, termbox.ColorDefault}
+	case "TokenTypeMath":
+		return CharacterStyle{termbox.ColorGreen, termbox.ColorDefault}
+	case "TokenTypePunct":
+		return CharacterStyle{termbox.ColorYellow, termbox.ColorDefault}
+	case "TokenTypeOther":
+		return CharacterStyle{termbox.ColorDefault, termbox.ColorDefault}
+	default:
+		return CharacterStyle{termbox.ColorDefault, termbox.ColorDefault}
+	}
 }
 
 func (m StatusBar) GetStatusString(spaces string) string {

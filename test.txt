@@ -1,0 +1,63 @@
+namespace GraphCalculator
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Graph Calculator");
+            Console.Write("Enter function f(x) = ");
+            string function = Console.ReadLine();
+
+            // Parse the function and create an expression tree
+            Expression<Func<double, double>> exp = ParseFunction(function);
+            var compiledFunction = exp.Compile();
+
+            // Calculate values for a range of x and store them
+            var points = new List<Point>();
+            for (double x = -10; x <= 10; x += 0.1) // Increment by 0.1 for smoother curve
+            {
+                double y = compiledFunction(x);
+                points.Add(new Point(x, y));
+            }
+
+            // Render the graph in console
+            RenderGraph(points);
+
+            Console.WriteLine("Press any key to exit.");
+            Console.ReadKey();
+        }
+
+        static Expression<Func<double, double>> ParseFunction(string function)
+        {
+            // Replace unsupported operators and parse the function
+            function = Regex.Replace(function, @"\^", "**");
+            // TODO: Implement a full parser or use a library like NCalc or Sprache
+            // For demonstration, we'll assume the function is always x^2
+            ParameterExpression paramX = Expression.Parameter(typeof(double), "x");
+            Expression body = Expression.Power(paramX, Expression.Constant(2.0));
+            return Expression.Lambda<Func<double, double>>(body, paramX);
+        }
+
+        static void RenderGraph(List<Point> points)
+        {
+            // Simple console graph rendering
+            foreach (var point in points)
+            {
+                Console.SetCursorPosition((int)(point.X + 10), (int)(20 - point.Y));
+                Console.Write("*");
+            }
+        }
+    }
+
+    struct Point
+    {
+        public double X { get; }
+        public double Y { get; }
+
+        public Point(double x, double y)
+        {
+            X = x;
+            Y = y;
+        }
+    }
+}
