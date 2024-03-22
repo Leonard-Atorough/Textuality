@@ -90,9 +90,13 @@ func clear_and_display_buffer() {
 		for col = 0; col < COLS; col++ {
 			text_bufferCol := col + offset_col
 			if text_bufferRow >= 0 && text_bufferRow < len(tokenedBuffer) && text_bufferCol < len(text_buffer[text_bufferRow]) {
-				character := tokenedBuffer[text_bufferRow][text_bufferCol]
-				characterStyle := highlight(string(character.Type))
-				termbox.SetCell(col, row, character.Value, characterStyle.foreground, characterStyle.background)
+				for _, character := range tokenedBuffer[text_bufferRow] {
+					characterStyle := highlight(string(character.Type))
+					for _, v := range character.Value {
+						termbox.SetCell(col, row, v, characterStyle.foreground, characterStyle.background)
+						col++
+					}
+				}
 			} else if row+offset_row > len(text_buffer)-1 {
 				termbox.SetCell(0, row, rune('*'), termbox.ColorBlue, termbox.ColorRed)
 			}
@@ -204,7 +208,7 @@ func highlight(token string) CharacterStyle {
 	case "TokenTypeDigit":
 		return CharacterStyle{termbox.ColorBlue, termbox.ColorDefault}
 	case "TokenTypeCharacter":
-		return CharacterStyle{termbox.ColorRed, termbox.ColorDefault}
+		return CharacterStyle{termbox.ColorDefault, termbox.ColorBlack}
 	case "TokenTypeSymbol":
 		return CharacterStyle{termbox.ColorWhite, termbox.ColorDefault}
 	case "TokenTypeMath":

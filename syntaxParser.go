@@ -4,47 +4,69 @@ import (
 	"unicode"
 )
 
-// Token types
+type TokenType string
+
 const (
-	TokenTypeKeyword  = iota
-	TokenTypeDigit    = "TokenTypeDigit"
-	TokenTypeCharater = "TokenTypeCharater"
-	TokenTypeSymbol   = "TokenTypeSymbol"
-	TokenTypeMath     = "TokenTypeMath"
-	TokenTypePunct    = "TokenTypePunct"
-	TokenTypeOther    = "TokenTypeOther"
+	TokenTypeKeyword   = iota
+	TokenTypeDigit     = "TokenTypeDigit"
+	TokenTypeCharacter = "TokenTypeCharacter"
+	TokenTypeSymbol    = "TokenTypeSymbol"
+	TokenTypeMath      = "TokenTypeMath"
+	TokenTypePunct     = "TokenTypePunct"
+	TokenTypeOther     = "TokenTypeOther"
 	// Add more token types as needed.
 )
 
 // Token represents a lexical token.
 type Token struct {
-	Type  string
-	Value rune
+	Type  TokenType
+	Value string
 }
 
 func tokenize(text [][]rune) [][]Token {
 	var tokens [][]Token
-
-	for _, l := range text {
+	for _, line := range text {
+		var currentToken string
 		var tokenLine []Token
-		for _, r := range l {
+		for _, r := range line {
 			switch {
-			// case unicode.IsLetter(r):
-			// 	tokenLine = append(tokenLine, Token{TokenTypeCharater, r})
-			case unicode.IsDigit(r):
-				tokenLine = append(tokenLine, Token{TokenTypeDigit, r})
-			case unicode.IsPunct(r):
-				tokenLine = append(tokenLine, Token{TokenTypePunct, r})
-			case unicode.Is(unicode.Sm, r):
-				tokenLine = append(tokenLine, Token{TokenTypeMath, r})
-			case unicode.IsSymbol(r):
-				tokenLine = append(tokenLine, Token{TokenTypeSymbol, r})
+			case unicode.IsLetter(r):
+				currentToken += string(r)
+			case unicode.IsDigit(r), unicode.IsPunct(r), unicode.Is(unicode.Sm, r), unicode.IsSymbol(r):
+				var tokenType TokenType
+				switch {
+				case unicode.IsDigit(r):
+					tokenType = TokenTypeDigit
+				case unicode.IsPunct(r):
+					tokenType = TokenTypePunct
+				case unicode.Is(unicode.Sm, r):
+					tokenType = TokenTypeMath
+				case unicode.IsSymbol(r):
+					tokenType = TokenTypeSymbol
+				}
+				tokenLine = append_token(tokenLine, tokenType, string(r), &currentToken)
 			default:
-				tokenLine = append(tokenLine, Token{TokenTypeOther, r})
+				tokenLine = append_token(tokenLine, TokenTypeOther, string(r), &currentToken)
 			}
+		}
+		if currentToken != "" {
+			tokenLine = append(tokenLine, Token{TokenTypeOther, currentToken})
 		}
 		tokens = append(tokens, tokenLine)
 	}
 
 	return tokens
+}
+
+func is_not_empty_token(currentToken string) bool {
+	return currentToken != ""
+}
+
+func append_token(tokenLine []Token, tokenType TokenType, value string, currentToken *string) []Token {
+	if is_not_empty_token(*currentToken) {
+		tokenLine = append(tokenLine, Token{TokenTypeCharacter, *currentToken})
+		*currentToken = ""
+	}
+	tokenLine = append(tokenLine, Token{tokenType, value})
+	return tokenLine
 }
