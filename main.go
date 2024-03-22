@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -91,7 +92,7 @@ func clear_and_display_buffer() {
 			text_bufferCol := col + offset_col
 			if text_bufferRow >= 0 && text_bufferRow < len(tokenedBuffer) && text_bufferCol < len(text_buffer[text_bufferRow]) {
 				for _, character := range tokenedBuffer[text_bufferRow] {
-					characterStyle := highlight(string(character.Type))
+					characterStyle := highlight(character)
 					for _, v := range character.Value {
 						termbox.SetCell(col, row, v, characterStyle.foreground, characterStyle.background)
 						col++
@@ -203,12 +204,17 @@ type CharacterStyle struct {
 	background termbox.Attribute
 }
 
-func highlight(token string) CharacterStyle {
-	switch token {
+func highlight(token Token) CharacterStyle {
+	switch token.Type {
 	case "TokenTypeDigit":
-		return CharacterStyle{termbox.ColorBlue, termbox.ColorDefault}
+		return CharacterStyle{termbox.ColorRed, termbox.ColorDefault}
 	case "TokenTypeCharacter":
-		return CharacterStyle{termbox.ColorDefault, termbox.ColorBlack}
+		switch is_keyword(token.Value) {
+		case true:
+			return CharacterStyle{termbox.ColorMagenta, termbox.ColorBlack}
+		default:
+			return CharacterStyle{termbox.ColorDefault, termbox.ColorBlack}
+		}
 	case "TokenTypeSymbol":
 		return CharacterStyle{termbox.ColorWhite, termbox.ColorDefault}
 	case "TokenTypeMath":
@@ -220,6 +226,22 @@ func highlight(token string) CharacterStyle {
 	default:
 		return CharacterStyle{termbox.ColorDefault, termbox.ColorDefault}
 	}
+}
+
+func is_keyword(token string) bool {
+	keywords := []string{
+		"false", "NaN", "none", "bool", "break", "byte",
+		"case", "catch", "class", "const", "continue", "def", "do",
+		"elif", "else", "else:", "enum", "export", "extends", "extern",
+		"finally", "float", "for", "from", "func", "function",
+		"global", "if", "import", " in", "int", "lambda", "try", "except",
+		"nil", "not", "null", "pass", "print", "raise", "return",
+		"self", "short", "signed", "sizeof", "static", "struct", "switch",
+		"this", "throw", "throws", "true", "True", "typedef", "typeof",
+		"undefined", "union", "unsigned", "until", "var", "void",
+		"while", "with", "yield", "double",
+	}
+	return slices.Contains(keywords, strings.ToLower(token))
 }
 
 func (m StatusBar) GetStatusString(spaces string) string {
