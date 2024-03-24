@@ -58,7 +58,7 @@ func display_status_bar() {
 	if len(copy_buffer) > 0 {
 		statusBar.copy_status = " [copy] "
 	}
-	if len(copy_buffer) > 0 {
+	if len(undo_buffer) > 0 {
 		statusBar.undo_status = " [undo] "
 	}
 	used_space := len(statusBar.mode_status) + len(statusBar.file_status) + len(statusBar.cursor_status) + len(statusBar.copy_status) + len(statusBar.undo_status)
@@ -74,6 +74,7 @@ func process_events() {
 	case termbox.EventKey:
 		switch event.Key {
 		case termbox.KeyEsc:
+			write_file(source_file)
 			termbox.Close()
 		}
 	}
@@ -209,10 +210,11 @@ func highlight(token Token) CharacterStyle {
 	case "TokenTypeDigit":
 		return CharacterStyle{termbox.ColorRed, termbox.ColorDefault}
 	case "TokenTypeCharacter":
-		switch is_keyword(token.Value) {
-		case true:
+		if is_keyword(token.Value) {
 			return CharacterStyle{termbox.ColorMagenta, termbox.ColorBlack}
-		default:
+		} else if is_type_keyword(token.Value) {
+			return CharacterStyle{termbox.ColorCyan, termbox.ColorBlack}
+		} else {
 			return CharacterStyle{termbox.ColorDefault, termbox.ColorBlack}
 		}
 	case "TokenTypeSymbol":
@@ -230,18 +232,26 @@ func highlight(token Token) CharacterStyle {
 
 func is_keyword(token string) bool {
 	keywords := []string{
-		"false", "NaN", "none", "bool", "break", "byte",
+		"false", "NaN", "none", "break", "byte",
 		"case", "catch", "class", "const", "continue", "def", "do",
 		"elif", "else", "else:", "enum", "export", "extends", "extern",
 		"finally", "float", "for", "from", "func", "function",
-		"global", "if", "import", " in", "int", "lambda", "try", "except",
+		"global", "if", "import", " in", "lambda", "try", "except",
 		"nil", "not", "null", "pass", "print", "raise", "return",
 		"self", "short", "signed", "sizeof", "static", "struct", "switch",
 		"this", "throw", "throws", "true", "True", "typedef", "typeof",
 		"undefined", "union", "unsigned", "until", "var", "void",
-		"while", "with", "yield", "double",
+		"while", "with", "yield",
 	}
 	return slices.Contains(keywords, strings.ToLower(token))
+}
+
+func is_type_keyword(token string) bool {
+	typeKeywords := []string{
+		"int", "double", "decimal", "long",
+		"string", "char", "rune",
+	}
+	return slices.Contains(typeKeywords, strings.ToLower(token))
 }
 
 func (m StatusBar) GetStatusString(spaces string) string {
